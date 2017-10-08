@@ -37,8 +37,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Shader.fx">
-      <Filter>소스 파일</Filter>
-    </FxCompile>
+    <FxCompile Include="Shader.fx" />
+    <FxCompile Include="PickedShader.fx" />
   </ItemGroup>
 </Project>

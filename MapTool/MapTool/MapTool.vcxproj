@@ -154,6 +154,7 @@
     <ClInclude Include="main.h" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="PickedShader.fx" />
     <FxCompile Include="Shader.fx" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

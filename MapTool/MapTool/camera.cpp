@@ -165,6 +165,10 @@ XMMATRIX Camera::GetProjection() const
 {
 	return XMLoadFloat4x4(&m_Projection);
 }
+XMFLOAT4X4 Camera::GetProjection4X4() const
+{
+	return m_Projection;
+}
 
 XMMATRIX Camera::GetViewProjection() const
 {

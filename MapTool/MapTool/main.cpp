@@ -35,8 +35,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmd
 
 	InitDevice();
 	CreateShader();
-	CreateVertexBuffer();
-	CreateIndexBuffer();
 	CreateConstantBuffer();
 
 	CreateRenderState();
@@ -127,6 +125,17 @@ LRESULT CALLBACK WndProc(HWND hWnd,UINT iMessage,WPARAM wParam, LPARAM lParam)
 					break;
 				}
 
+				case VK_INSERT:
+				{
+					UpdateHeightMap(true);
+					break;
+				}
+				case VK_DELETE:
+				{
+					UpdateHeightMap(false);
+					break;
+				}
+
 				
 			}
 			break;
@@ -149,9 +158,28 @@ LRESULT CALLBACK WndProc(HWND hWnd,UINT iMessage,WPARAM wParam, LPARAM lParam)
 			m_LastMouseX = x;
 			m_LastMouseY = y;
 		
+
+			if (GetAsyncKeyState(MK_LBUTTON))
+			{
+				Pick(x, y);
+			}
+
 			break;
 		}
 
+		case WM_LBUTTONDOWN:case MK_LBUTTON:
+		{
+
+			float x = GET_X_LPARAM(lParam);
+			float y = GET_Y_LPARAM(lParam);
+
+			if (!GetAsyncKeyState(VK_LSHIFT))
+			{
+				ClearPickedTriangleVector();
+			}
+			Pick(x, y);
+
+		}
 	}
 
 
@@ -191,6 +219,16 @@ void CreateDepthStencilTexture()
 	g_pd3dDevice->CreateDepthStencilView(g_pDepthStencil, &descDSV, &g_pDepthStencilView);
 
 	g_pDepthStencil->Release();
+
+	D3D11_DEPTH_STENCIL_DESC lessEqualDesc;
+	lessEqualDesc.DepthEnable = true;
+	lessEqualDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	lessEqualDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+	lessEqualDesc.StencilEnable = false;
+
+	g_pd3dDevice->CreateDepthStencilState(&lessEqualDesc, &g_LessEqualDSS);
+
+
 }
 
 HRESULT InitDevice()
@@ -354,72 +392,19 @@ HRESULT CreateShader()
 	if (FAILED(hr))
 		return hr;
 
+	ID3DBlob*	pPPsBlob = NULL;
+	hr = D3DCompileFromFile(L"PickedShader.fx", 0, 0,
+		"PS", "ps_5_0",
+		0, 0,
+		&pPPsBlob, &pErrorBlob);
+
+	if (FAILED(hr))
+		return hr;
+
+	hr = g_pd3dDevice->CreatePixelShader(pPPsBlob->GetBufferPointer(), pPPsBlob->GetBufferSize(), 0, &g_pPixedPixelShader);
+
+
 	pPSBlob->Release();
-}
-
-void CreateVertexBuffer()
-{
-	MyVertex vertices[] =
-	{
-		{ XMFLOAT3(-1.0f, 1.0f, -1.0f),  XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f), XMFLOAT3(-0.33f,  0.33f, -0.33f), XMFLOAT2(1.0f,1.0f) },
-		{ XMFLOAT3(1.0f, 1.0f, -1.0f),   XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f), XMFLOAT3(0.33f,  0.33f, -0.33f) , XMFLOAT2(0.0f,1.0f) },
-		{ XMFLOAT3(1.0f, 1.0f, 1.0f),    XMFLOAT4(0.0f, 1.0f, 1.0f, 1.0f), XMFLOAT3(0.33f,  0.33f,  0.33f) , XMFLOAT2(0.0f,0.0f) },
-		{ XMFLOAT3(-1.0f, 1.0f, 1.0f),   XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f), XMFLOAT3(-0.33f,  0.33f,  0.33f), XMFLOAT2(1.0f,0.0f) },
-		{ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(1.0f, 0.0f, 1.0f, 1.0f), XMFLOAT3(-0.33f, -0.33f, -0.33f), XMFLOAT2(0.0f,0.0f) },
-		{ XMFLOAT3(1.0f, -1.0f, -1.0f),  XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f), XMFLOAT3(0.33f, -0.33f, -0.33f) , XMFLOAT2(1.0f,0.0f) },
-		{ XMFLOAT3(1.0f, -1.0f, 1.0f),   XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), XMFLOAT3(0.33f, -0.33f,  0.33f) , XMFLOAT2(1.0f,1.0f) },
-		{ XMFLOAT3(-1.0f, -1.0f, 1.0f),  XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), XMFLOAT3(-0.33f, -0.33f,  0.33f), XMFLOAT2(0.0f,1.0f) },
-	};
-
-
-
-	D3D11_BUFFER_DESC bd;
-	ZeroMemory(&bd, sizeof(bd));
-
-	bd.ByteWidth = sizeof(vertices);
-	bd.Usage = D3D11_USAGE_DEFAULT;
-	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	bd.CPUAccessFlags = 0;
-
-	D3D11_SUBRESOURCE_DATA initData;
-	ZeroMemory(&initData, sizeof(initData));
-	initData.pSysMem = vertices;
-
-	g_pd3dDevice->CreateBuffer(&bd, &initData, &g_pVertexBuffer);
-}
-
-void CreateIndexBuffer()
-{
-	UINT indices[]
-	{
-		3,1,0,
-		2,1,3,
-		0,5,4,
-		1,5,0,
-		3,4,7,
-		0,4,3,
-		1,6,5,
-		2,6,1,
-		2,7,6,
-		3,7,2,
-		6,4,5,
-		7,4,6,
-	};
-
-	D3D11_BUFFER_DESC ibd;
-	ZeroMemory(&ibd, sizeof(ibd));
-
-	ibd.ByteWidth = sizeof(indices);
-	ibd.Usage = D3D11_USAGE_IMMUTABLE;
-	ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-	ibd.CPUAccessFlags = 0;
-
-	D3D11_SUBRESOURCE_DATA iInitData;
-	ZeroMemory(&iInitData, sizeof(iInitData));
-	iInitData.pSysMem = indices;
-
-	g_pd3dDevice->CreateBuffer(&ibd, &iInitData, &g_pIndexBuffer);
-
 }
 
 void InitMatrix()
@@ -492,7 +477,7 @@ HRESULT LoadTexture()
 
 void CreateHeightMapVB()
 {
-	MyVertex * heightMapVertex = new MyVertex[numVertices];
+	heightMapVertex = new MyVertex[numVertices];
 
 	for (int z = 0; z < vertexCount; z++)
 	{
@@ -525,7 +510,7 @@ void CreateHeightMapIB()
 {
 	int triangleCount = (vertexCount - 1) * (vertexCount - 1) * 2;
 	indexSize = triangleCount * 3;
-	UINT* indices = new UINT[indexSize];
+	indices = new UINT[indexSize];
 
 	int baseIndex = 0;
 	int _numVertsPerRow = vertexCount;
@@ -638,6 +623,102 @@ void Render(float deltaTime)
 	g_pImmediateContext->DrawIndexed(indexSize, 0, 0);
 
 
+	if (!m_pickedTriangles.empty()) {
+
+		g_pImmediateContext->OMSetDepthStencilState(g_LessEqualDSS, 0);
+		g_pImmediateContext->PSSetShader(g_pPixedPixelShader, NULL, 0);
+
+		for (auto i : m_pickedTriangles)
+		{
+			g_pImmediateContext->DrawIndexed(3, 3 * i, 0);
+
+		}
+		
+		g_pImmediateContext->OMSetDepthStencilState(0, 0);
+	}
+
+
+
 
 	g_pSwapChain->Present(0, 0);
+}
+
+void Pick(int x, int y)
+{
+	XMFLOAT4X4 P = g_Camera.GetProjection4X4();
+	
+	float viewX = (1.0f *x / m_clientWidth -1.0f ) / P(0, 0);
+	float viewY = ((-1.0f)* y / m_clientHeight) + 1.0f / P(1, 1);
+
+	XMVECTOR rayOrigin = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+	XMVECTOR rayDirection = XMVectorSet(viewX, viewY, 1.0f, 0.0f);
+
+	XMMATRIX View = g_Camera.GetView();
+	XMMATRIX inverseView = XMMatrixInverse(&XMMatrixDeterminant(View), View);
+
+	XMMATRIX World = g_World;
+	XMMATRIX inverseWorld = XMMatrixInverse(&XMMatrixDeterminant(World), World);
+
+	XMMATRIX toLocal = XMMatrixMultiply(inverseView, inverseWorld);
+
+	rayOrigin = XMVector3TransformCoord(rayOrigin, toLocal);
+	rayDirection = XMVector3TransformNormal(rayDirection, toLocal);
+	rayDirection = XMVector3Normalize(rayDirection);
+
+	float tMin = 10000.0f;
+
+	for (int i = 0; i < indexSize / 3; i++)
+	{
+		int i0 = indices[i * 3 + 0];
+		int i1 = indices[i * 3 + 1];
+		int i2 = indices[i * 3 + 2];
+
+		XMVECTOR v0 = XMLoadFloat3((&heightMapVertex[i0].pos));
+		XMVECTOR v1 = XMLoadFloat3((&heightMapVertex[i1].pos));
+		XMVECTOR v2 = XMLoadFloat3((&heightMapVertex[i2].pos));
+
+		float t = 0.0f;
+
+		if (DirectX::TriangleTests::Intersects(rayOrigin,rayDirection,v0, v1, v2, t))
+		{
+			if (t < tMin)
+			{
+				tMin = t;
+				m_pickedTriangles.emplace_back(i);
+			}
+		}
+	}
+
+	
+}
+
+void ClearPickedTriangleVector()
+{
+	m_pickedTriangles.clear();
+}
+
+void UpdateHeightMap(bool up)
+{
+
+	float changeValue = 0.05f;
+	if (!up)
+		changeValue *= -1;
+
+	for (auto i : m_pickedTriangles)
+	{
+		int v0 = indices[i * 3] ;
+		int v1 = indices[i * 3 + 1];
+		int v2 = indices[i * 3 + 2];
+
+		heightMapVertex[v0].pos.y += changeValue;
+		heightMapVertex[v1].pos.y += changeValue;
+		heightMapVertex[v2].pos.y += changeValue;
+		
+	}
+
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	ZeroMemory(&mappedResource, sizeof(D3D11_MAPPED_SUBRESOURCE));
+	g_pImmediateContext->Map(g_pHeightMapVertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	memcpy(mappedResource.pData, heightMapVertex, sizeof(MyVertex) * numVertices);
+	g_pImmediateContext->Unmap(g_pHeightMapVertexBuffer, 0);
 }

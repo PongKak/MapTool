@@ -4,11 +4,13 @@
 #include <d3d11.h>
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
-#include "DirectXTex.h"
 #include <vector>
 #include <fstream>
-#include "camera.h"
 #include <windowsx.h>
+#include <DirectXCollision.h>
+#include "DirectXTex.h"
+#include "camera.h"
+
 
 #pragma comment(lib,"dxguid.lib")
 #pragma comment(lib,"d3dcompiler.lib")
@@ -28,6 +30,7 @@ ID3D11InputLayout*			g_pVertexLayout = NULL;
 ID3D11Buffer*				g_pVertexBuffer = NULL;
 
 ID3D11PixelShader*			g_pPixelShader = NULL;
+ID3D11PixelShader*			g_pPixedPixelShader = NULL;
 
 ID3D11Buffer*				g_pIndexBuffer = NULL;
 
@@ -39,6 +42,7 @@ ID3D11Buffer*				g_pConstantBuffer = NULL; // 상수 버퍼
 
 ID3D11Texture2D*			g_pDepthStencil = NULL; // 스텐실 버퍼
 ID3D11DepthStencilView*		g_pDepthStencilView = NULL;
+ID3D11DepthStencilState*	g_LessEqualDSS = NULL;
 
 ID3D11RasterizerState*		g_pSolidRS;
 ID3D11RasterizerState*		g_pWireframeRS;
@@ -74,12 +78,18 @@ struct ConstantBuffer
 	XMFLOAT4     lightColor;
 };
 
-int vertexCount = 257;
-int numVertices = vertexCount * vertexCount;
-int indexSize = 0;
+int			vertexCount = 257;
+int			numVertices = vertexCount * vertexCount;
+int			indexSize = 0;
+int			pickedTriangle = -1;
+UINT*		indices;
+MyVertex*	heightMapVertex;
+
+float	m_clientWidth = 800.0f;
+float	m_clientHeight = 600.0f;
 
 std::vector<int> _heightMap;
-
+std::vector<int> m_pickedTriangles;
 
 HINSTANCE g_hInst;
 LPCTSTR lpszClass = TEXT("MapTool");
@@ -110,10 +120,6 @@ void CleanupDevice();
 
 HRESULT CreateShader();
 
-void CreateVertexBuffer();
-
-void CreateIndexBuffer();
-
 void InitMatrix();
 
 void CreateConstantBuffer();
@@ -131,3 +137,9 @@ void CalcMatrixForHeightMap(float deltaTime);
 void LoadHeightMap();
 
 void Render(float deltaTime);
+
+void Pick(int x,int y);
+
+void ClearPickedTriangleVector();
+
+void UpdateHeightMap(bool);

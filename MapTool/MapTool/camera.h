@@ -47,6 +47,7 @@ public:
 
 	XMMATRIX GetView() const;
 	XMMATRIX GetProjection() const;
+	XMFLOAT4X4 GetProjection4X4() const;
 	XMMATRIX GetViewProjection() const;
 
 	void HorizontalMove(float d);
