@@ -151,7 +151,7 @@
     <ClInclude Include="camera.h" />
     <ClInclude Include="DirectXTex.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="Util.h" />
+    <ClInclude Include="main.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shader.fx" />
